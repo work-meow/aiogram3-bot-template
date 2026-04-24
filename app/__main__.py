@@ -6,7 +6,6 @@ from app.container import init_container
 from app.scheduler import SchedulerManager
 from app.logger import setup_logger, logger
 from app.bot import init_bot, start_bot
-from app.api import server_start
 
 
 
@@ -31,7 +30,6 @@ async def main() -> None:
 
         try:
             async with asyncio.TaskGroup() as tg:
-                tg.create_task(server_start(container))
                 tg.create_task(start_bot(bot, dp))
 
         except* Exception as eg:

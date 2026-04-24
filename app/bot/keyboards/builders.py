@@ -2,7 +2,10 @@ from typing import Any, Self
 
 from aiogram_i18n import I18nContext
 from aiogram.filters.callback_data import CallbackData
-from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+from aiogram.utils.keyboard import (
+    InlineKeyboardBuilder, 
+    ReplyKeyboardBuilder
+)
 from aiogram.types import (
     KeyboardButtonPollType,
     InlineKeyboardMarkup,
@@ -13,8 +16,10 @@ from aiogram.types import (
 )
 
 
+
 class I18nInline(InlineKeyboardBuilder):
-    """Инлайн-клавиатуры с автопереводом (Fluent Builder)."""
+    """Инлайн-клавиатуры с автопереводом 
+    (Fluent Builder)."""
 
     def __init__(self, i18n: I18nContext) -> None:
         super().__init__()
@@ -50,7 +55,8 @@ class I18nInline(InlineKeyboardBuilder):
 
 
 class I18nReply(ReplyKeyboardBuilder):
-    """Reply-клавиатуры с автопереводом и UX-оптимизацией."""
+    """Reply-клавиатуры с автопереводом 
+    (Fluent Builder)."""
 
     def __init__(self, i18n: I18nContext) -> None:
         super().__init__()
