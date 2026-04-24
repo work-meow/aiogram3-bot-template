@@ -1,58 +1,127 @@
+import contextlib
+
 from typing import Any
 from loguru import logger
 from aiogram import BaseMiddleware
+from aiogram.fsm.context import FSMContext
 from collections.abc import Awaitable, Callable
-from aiogram.types import TelegramObject, Update, User
+from aiogram.types import (
+    TelegramObject,
+    CallbackQuery,
+    InlineQuery,
+    Update,
+)
 
 
-Handler = Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]]
 
-class LoggingMiddleware(BaseMiddleware):
-    """Сбор контекста и логгирование апдейта."""
+type EventData = dict[str, Any]
+type Handler = Callable[
+    [
+        TelegramObject,
+        EventData
+    ],
+    Awaitable[Any]
+]
+
+
+
+class LoggingMiddleware(
+    BaseMiddleware
+):
+    """Логирует вход и выход
+    обработки update."""
+
+    __slots__ = (
+        "log_state",
+        "p_limit",
+    )
+
+
+    def __init__(
+        self,
+        log_state: bool = False,
+        p_limit: int = 80,
+    ) -> None:
+        """Инициализируем настройки
+        для логгирования."""
+
+        super().__init__()
+
+        if p_limit <= 0:
+            raise ValueError(
+                "p_limit must be "
+                "greater than 0"
+            )
+
+        self.log_state = log_state
+        self.p_limit = p_limit
+
+
+
+    async def _state(self, data: EventData) -> str:
+        """Безопасно извлекает текущее состояние
+        пользователя (FSM) для лога."""
+
+        if not self.log_state:
+            return ""
+
+        if isinstance(state := data.get("state"), FSMContext):
+            with contextlib.suppress(Exception):
+                if current_state := await state.get_state():
+                    return f" | state={current_state}"
+        return ""
+
+
+
+    def _payload(self, event: TelegramObject | None) -> str:
+        """Извлекает полезную нагрузку из
+        события для записи в лог."""
+
+        if isinstance(event, CallbackQuery):
+            data = event.data or "empty"
+            return f" | data={data[:self.p_limit]}"
+
+        if isinstance(event, InlineQuery):
+            query = event.query or "empty"
+            return f" | query={query[:self.p_limit]}"
+
+        return ""
+
+
 
     async def __call__(
         self,
         handler: Handler,
         event: TelegramObject,
-        data: dict[str, Any]
+        data: EventData,
     ) -> Any:
+        """Перехватывает апдейт для записи
+        подробного лога на входе и выходе.
+        """
 
-        # 1. Только корневой Update
         if not isinstance(event, Update):
             return await handler(event, data)
-
-
-        # 2. Получаем метрики
-        inner = event.event
-        uid: int = event.update_id
-        etype: str = event.event_type
-        user: User | None = getattr(inner, "from_user", None)
-        u_id: int | str = user.id if user else "none"
-
-
-        # 3. Сбор полезной нагрузки
-        payload = ""
-        if etype == "callback_query":
-            payload = f" | Data: {getattr(inner, 'data', 'empty')}"
-
-        elif etype == "inline_query":
-            payload = f" | Qry: {getattr(inner, 'query', 'empty')[:30]}"
-
-
-        # 4. Определение FSM
-        state_name = "default"
-        if state := data.get("state"):
-            if cur_state := await state.get_state():
-                state_name = cur_state
-
-
-        # 5. Входной лог с полным контекстом
-        logger.debug(f"▶ IN  | Upd: {uid} | {etype} | User: {u_id} | State: {state_name}{payload}")
+        upd_id = event.update_id
 
         try:
-            # 6. Передача управления дальше по цепочке
-            return await handler(event, data)
+            ev_type = event.event_type
+            inner = event.event
 
-        finally:
-            # 7. Гарантированная фиксация выхода
-            logger.debug(f"✅ OUT | Upd: {uid}")
+        except LookupError:
+            ev_type = "unknown"
+            inner = None
+
+
+        user = getattr(inner, "from_user", None)
+        u_id = user.id if user else "none"
+
+        payload = self._payload(inner)
+        state = await self._state(data)
+
+        logger.debug(
+            f"IN | update_id={upd_id} | "
+            f"type={ev_type} | user_id={u_id}"
+            f"{state} {payload}"
+        )
+
+        return await handler(event, data)

@@ -21,5 +21,6 @@ async def on_startup(
             chat_id=chat_id,
             text="🟢 Service online"
         )
+
     except Exception as e:
         logger.error(f"❌ Startup alert: {e}")

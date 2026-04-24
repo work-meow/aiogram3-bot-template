@@ -21,5 +21,6 @@ async def on_shutdown(
             chat_id=chat_id,
             text="🔴 Service offline"
         )
+
     except Exception as e:
         logger.error(f"❌ Shutdown alert: {e}")
