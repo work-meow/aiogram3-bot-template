@@ -10,10 +10,10 @@ def setup_routers() -> Router:
     # Корневой роутер
     main_router = Router(name="main")
 
-    # Собираем все ветки
-    main_router.include_routers(
-        # common_router,
+    # # Собираем все ветки
+    # main_router.include_routers(
+    #     # common_router,
 
-    )
+    # )
 
     return main_router

@@ -17,7 +17,11 @@ class Settings(BaseSettings):
 
     # Bot
     BOT_TOKEN: str
+    BOT_PROXY: bool = False
     CHANNEL_ID: str | None = None
+
+    # Proxy
+    PROXY_URL: str | None = None
 
     # PostgreSQL
     DATABASE_URL: str

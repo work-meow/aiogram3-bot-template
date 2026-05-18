@@ -3,12 +3,10 @@ import traceback
 
 from aiogram import Bot
 from loguru import logger
-from typing import TYPE_CHECKING
 from aiogram.types import BufferedInputFile, ErrorEvent
 from dishka.integrations.aiogram import FromDishka, inject
 
-if TYPE_CHECKING:
-    from app.settings import Settings
+from app.settings import Settings
 
 
 
@@ -17,13 +15,13 @@ def get_ids(
 ) -> tuple[int | str, int | str]:
     """Извлекает update_id и
     user_id из события."""
-    
+
     if not (upd := event.update):
         return "unknown", "unknown"
-    
+
     try:
         return (
-            upd.update_id, 
+            upd.update_id,
             upd.event.from_user.id
         )
     except AttributeError:
@@ -33,22 +31,22 @@ def get_ids(
 
 
 def tb_file(
-    exc: BaseException, 
+    exc: BaseException,
     upd_id: int | str
 ) -> BufferedInputFile:
-    """Создаёт файл с 
+    """Создаёт файл с
     трейсбеком."""
-    
+
     tb = "".join(
         traceback.format_exception(
             tb=exc.__traceback__,
-            etype=type(exc), 
-            value=exc, 
+            etype=type(exc),
+            value=exc,
         )
     )
-    
+
     return BufferedInputFile(
-        file=tb.encode(), 
+        file=tb.encode(),
         filename=f"er_{upd_id}.txt"
     )
 
@@ -56,13 +54,13 @@ def tb_file(
 
 
 def caption(
-    upd_id: int | str, 
-    user_id: int | str, 
+    upd_id: int | str,
+    user_id: int | str,
     exc: BaseException
 ) -> str:
-    """Создаёт caption 
+    """Создаёт caption
     для уведомления."""
-    
+
     name = html.escape(type(exc).__name__)
     msg = html.escape(str(exc)[:200])
 
@@ -73,7 +71,7 @@ def caption(
         f"🛑 <b>Type:</b> <code>{name}</code>\n"
         f"💬 <b>Msg:</b> <code>{msg}</code>"
     )
-    
+
 
 
 
@@ -83,9 +81,9 @@ async def on_error(
     bot: FromDishka[Bot],
     settings: FromDishka[Settings],
 ) -> None:
-    """Глобальный перехват 
+    """Глобальный перехват
     ошибок aiogram."""
-    
+
     exc = event.exception
     upd_id, user_id = get_ids(event)
     logger.opt(exception=exc).error(
@@ -96,13 +94,13 @@ async def on_error(
     try:
         if not settings.LOG_CHAT:
             return
-        
+
         await bot.send_document(
             chat_id=settings.LOG_CHAT,
             document=tb_file(exc, upd_id),
             caption=caption(upd_id, user_id, exc),
         )
-        
+
     except Exception as e:
         logger.opt(exception=e).warning(
             "Не удалось отправить "
