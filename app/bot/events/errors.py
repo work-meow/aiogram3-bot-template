@@ -3,59 +3,108 @@ import traceback
 
 from aiogram import Bot
 from loguru import logger
-from aiogram.types import BufferedInputFile, ErrorEvent, Update, User
+from typing import TYPE_CHECKING
+from aiogram.types import BufferedInputFile, ErrorEvent
 from dishka.integrations.aiogram import FromDishka, inject
 
-from app.settings import Settings
+if TYPE_CHECKING:
+    from app.settings import Settings
+
+
+
+def get_ids(
+    event: ErrorEvent
+) -> tuple[int | str, int | str]:
+    """Извлекает update_id и
+    user_id из события."""
+    
+    if not (upd := event.update):
+        return "unknown", "unknown"
+    
+    try:
+        return (
+            upd.update_id, 
+            upd.event.from_user.id
+        )
+    except AttributeError:
+        return upd.update_id, "unknown"
+
+
+
+
+def tb_file(
+    exc: BaseException, 
+    upd_id: int | str
+) -> BufferedInputFile:
+    """Создаёт файл с 
+    трейсбеком."""
+    
+    tb = "".join(
+        traceback.format_exception(
+            tb=exc.__traceback__,
+            etype=type(exc), 
+            value=exc, 
+        )
+    )
+    
+    return BufferedInputFile(
+        file=tb.encode(), 
+        filename=f"er_{upd_id}.txt"
+    )
+
+
+
+
+def caption(
+    upd_id: int | str, 
+    user_id: int | str, 
+    exc: BaseException
+) -> str:
+    """Создаёт caption 
+    для уведомления."""
+    
+    name = html.escape(type(exc).__name__)
+    msg = html.escape(str(exc)[:200])
+
+    return (
+        f"⚠️ <b>Сбой обработчика</b>\n\n"
+        f"👤 <b>User:</b> <code>{user_id}</code>\n"
+        f"🔄 <b>Update:</b> <code>{upd_id}</code>\n"
+        f"🛑 <b>Type:</b> <code>{name}</code>\n"
+        f"💬 <b>Msg:</b> <code>{msg}</code>"
+    )
+    
+
 
 
 @inject
 async def on_error(
     event: ErrorEvent,
     bot: FromDishka[Bot],
-    settings: FromDishka[Settings]
+    settings: FromDishka[Settings],
 ) -> None:
-    """Глобальный перехват ошибок."""
-
-    exc: Exception = event.exception
-    update: Update | None = event.update
-
-    # 1. Извлекаем данные события
-    user: User | None = getattr(getattr(update, "event", None), "from_user", None)
-    upd_id: int | str  = update.update_id if update else "unknown"
-    user_id: int | str  = user.id if user else "unknown"
-
-    # 2. Логгируем в консоль и файл
-    logger.opt(exception=exc).error(f"💥 Сбой апдейта {upd_id} (User: {user_id})")
-
-    # 3. Проверяем лог-чат
-    chat_id = settings.LOG_CHAT
-    if not chat_id:
-        return
-
-    # 4. Экранируем текст для безопасного парсинга
-    exc_type: str = html.escape(type(exc).__name__)
-    exc_msg: str = html.escape(str(exc))[:200]
-
-    # 5. Подготовка файла в памяти
-    tb_str: str = "".join(traceback.format_exception(exc))
-    tb_file: BufferedInputFile = BufferedInputFile(
-        file=tb_str.encode("utf-8"),
-        filename=f"error_{upd_id}.txt"
+    """Глобальный перехват 
+    ошибок aiogram."""
+    
+    exc = event.exception
+    upd_id, user_id = get_ids(event)
+    logger.opt(exception=exc).error(
+        f"Сбой апдейта {upd_id} "
+        f"| user={user_id}"
     )
 
-    # 6. Отправка уведомления с файлом
     try:
+        if not settings.LOG_CHAT:
+            return
+        
         await bot.send_document(
-            chat_id=chat_id,
-            document=tb_file,
-            caption=(
-                f"⚠️ <b>Сбой обработчика</b>\n\n"
-                f"👤 <b>User:</b> <code>{user_id}</code>\n"
-                f"🔄 <b>Update:</b> <code>{upd_id}</code>\n"
-                f"🛑 <b>Type:</b> <code>{exc_type}</code>\n"
-                f"💬 <b>Msg:</b> <code>{exc_msg}...</code>"
-            )
+            chat_id=settings.LOG_CHAT,
+            document=tb_file(exc, upd_id),
+            caption=caption(upd_id, user_id, exc),
         )
+        
     except Exception as e:
-        logger.error(f"❌ Сбой уведомления: {e}")
+        logger.opt(exception=e).warning(
+            "Не удалось отправить "
+            "уведомление в лог-чат"
+        )

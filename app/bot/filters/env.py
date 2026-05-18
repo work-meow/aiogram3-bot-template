@@ -1,22 +1,14 @@
 from aiogram.filters import BaseFilter
 from aiogram.types import TelegramObject
-from dishka.integrations.aiogram import FromDishka, inject
-
-from app.settings import Settings
 
 
 class EnvFilter(BaseFilter):
-    """Пропускает апдейты только если
-    текущее окружение совпадает с целевым."""
+    """Пропускает апдейты  
+    только для определенного 
+    окружения."""
 
-    def __init__(self, target_env: str) -> None:
-        self.target_env = target_env
+    def __init__(self, got: str, want: str) -> None:
+        self.is_match = got == want
 
-    @inject
-    async def __call__(
-        self,
-        event: TelegramObject,
-        settings: FromDishka[Settings]
-    ) -> bool:
-
-        return settings.APP_ENV == self.target_env
+    async def __call__(self, event: TelegramObject) -> bool:
+        return self.is_match

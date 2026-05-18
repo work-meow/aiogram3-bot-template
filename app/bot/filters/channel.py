@@ -1,44 +1,35 @@
-import contextlib
-
 from aiogram import Bot
 from aiogram.filters import BaseFilter
+from aiogram.types import TelegramObject
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import TelegramObject, User
-from dishka.integrations.aiogram import FromDishka, inject
-
-from app.settings import Settings
 
 
-class IsSubscribed(BaseFilter):
-    """Проверка подписки на канал."""
+class IsSubscribedFilter(BaseFilter):
+    """Проверка подписки пользователя на канал.
+    Пропускает апдейт дальше, только если юзер 
+    является участником канала."""
 
-    @inject
-    async def __call__(
-        self,
-        event: TelegramObject,
-        bot: FromDishka[Bot],
-        settings: FromDishka[Settings]
-    ) -> bool:
+    __slots__ = ("channel_id",)
+    _UNSUBSCRIBED = frozenset({"left", "kicked", "banned"})
 
-        # 1. Получаем юзера из евента
-        user: User | None = getattr(event, "from_user", None)
-        if not user:
+
+    def __init__(self, channel_id: int | str | None) -> None:
+        self.channel_id = channel_id
+
+
+    async def __call__(self, event: TelegramObject, bot: Bot) -> bool:
+        if not self.channel_id:
+            return True
+        
+        if not (user := getattr(event, "from_user", None)):
             return False
 
-        # 2. Выход, если канал не задан
-        if not settings.CHANNEL_ID:
-            return True
-
-        # 3. Запрос к API с подавлением ошибок
-        with contextlib.suppress(TelegramAPIError):
+        try:
             member = await bot.get_chat_member(
-                chat_id=settings.CHANNEL_ID,
+                chat_id=self.channel_id, 
                 user_id=user.id
             )
-
-            # 4. Проверка статуса
-            return member.status not in (
-                "left", "kicked", "banned"
-            )
-
-        return False
+            return member.status not in self._UNSUBSCRIBED
+        
+        except TelegramAPIError:
+            return False

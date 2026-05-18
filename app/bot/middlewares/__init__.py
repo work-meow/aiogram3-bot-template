@@ -8,7 +8,7 @@ from ..localization import setup_i18n
 def setup_middlewares(dp: Dispatcher) -> None:
     """Регистрация всех middleware."""
 
-    # 1. профилер обработки update.
+    # 1. Профилер обработки update.
     dp.update.outer_middleware(
         ProfilerMiddleware(
             slow_after=1.5,
@@ -17,10 +17,8 @@ def setup_middlewares(dp: Dispatcher) -> None:
         )
     )
 
-
     # 2. Локализация.
     setup_i18n().setup(dp)
-
 
     # 3. Логирование update.
     dp.update.middleware(

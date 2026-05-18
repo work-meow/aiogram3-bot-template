@@ -12,9 +12,11 @@ async def on_shutdown(
 ) -> None:
     """Уведомление об остановке."""
 
-    chat_id = settings.LOG_CHAT
-    if not chat_id:
-        return logger.warning("⚠️ LOG_CHAT is missing.")
+    if not (chat_id := settings.LOG_CHAT):
+        return logger.warning(
+            "⚠️ LOG_CHAT is "
+            "missing."
+        )
 
     try:
         await bot.send_message(
