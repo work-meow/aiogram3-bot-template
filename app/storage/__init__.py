@@ -39,12 +39,14 @@ session_factory: Final = async_sessionmaker(
 
 # 4. Пингер для проверки на старте
 async def ping_database() -> None:
-    """Проверяет соединение с базой данных."""
+    """Проверяет соединение 
+    с базой данных."""
+    
     try:
         async with engine.begin() as conn:
             await conn.scalar(select(1))
-        logger.info("⚡ PostgreSQL подключен успешно.")
+        logger.info("⚡ PostgreSQL подключен.")
 
     except Exception as e:
-        logger.error(f"❌ Ошибка подключения к PostgreSQL: {e}")
+        logger.error(f"❌ Ошибка конекта к PostgreSQL: {e}")
         raise
