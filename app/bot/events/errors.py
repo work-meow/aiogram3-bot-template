@@ -18,7 +18,6 @@ def get_ids(
 
     if not (upd := event.update):
         return "unknown", "unknown"
-
     try:
         return (
             upd.update_id,
@@ -29,26 +28,16 @@ def get_ids(
 
 
 
-
 def tb_file(
-    exc: BaseException,
+    exc: BaseException, 
     upd_id: int | str
 ) -> BufferedInputFile:
-    """Создаёт файл с
-    трейсбеком."""
-
-    tb = "".join(
-        traceback.format_exception(
-            tb=exc.__traceback__,
-            etype=type(exc),
-            value=exc,
-        )
-    )
-
-    return BufferedInputFile(
-        file=tb.encode(),
-        filename=f"er_{upd_id}.txt"
-    )
+    """Создаёт файл с 
+    трейсбеком исключения."""
+    
+    fmt = traceback.format_exception(exc)
+    file = "".join(fmt).encode("utf-8")
+    return BufferedInputFile(file, f"{upd_id}.txt")
 
 
 

@@ -1,9 +1,11 @@
 from typing import Optional
-from datetime import datetime
-from sqlalchemy import BigInteger, String, Boolean
+from aiogram.types import User as TgUser
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import BigInteger, String, Boolean, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
+
 
 
 class User(BaseModel):
@@ -39,7 +41,7 @@ class User(BaseModel):
 
     lang: Mapped[Optional[str]] = mapped_column(
         String(10), 
-        default=None, 
+        default="ru", 
         comment="Код языка"
     )
 
@@ -70,3 +72,44 @@ class User(BaseModel):
         if self.last_name:
             return f"{self.first_name} {self.last_name}"
         return self.first_name
+
+
+
+    @classmethod
+    async def create_new(
+        cls,
+        session: AsyncSession,
+        tg_user: TgUser,
+    ) -> "User":
+        """Создаёт нового 
+        пользователя."""
+        
+        user = cls(
+            tg_id=tg_user.id,
+            first_name=tg_user.first_name or "",
+            last_name=tg_user.last_name,
+            lang=tg_user.language_code,
+            username=tg_user.username,
+        )
+        
+        session.add(user)
+        await session.commit()
+        return user
+    
+    
+    
+    @classmethod
+    async def get_by_tg_id(
+        cls,
+        session: AsyncSession,
+        tg_id: int,
+    ) -> "User | None":
+        """Находит пользователя 
+        по Telegram ID."""
+        
+        return await session.scalar(
+            select(cls).where(
+                cls.tg_id == 
+                tg_id
+            )
+        )

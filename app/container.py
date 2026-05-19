@@ -47,7 +47,10 @@ class AppProvider(Provider):
 
     # --- Клиенты HTTP ---
     @provide
-    async def direct_session(self) -> AsyncIterable[DirectSession]:
+    async def direct_session(
+        self
+    ) -> AsyncIterable[DirectSession]:
+        
         connector = aiohttp.TCPConnector(
             limit=100,
             keepalive_timeout=60,
@@ -64,8 +67,13 @@ class AppProvider(Provider):
         await self._clear(session)
 
 
+
     @provide
-    async def proxy_session(self, settings: Settings) -> AsyncIterable[ProxySession]:
+    async def proxy_session(
+        self, 
+        settings: Settings
+    ) -> AsyncIterable[ProxySession]:
+        
         connector_kwargs = {
             "limit": 100,
             "keepalive_timeout": 60,
@@ -98,9 +106,14 @@ class AppProvider(Provider):
         await self._clear(session)
 
 
+
     # --- Сессия Бота ---
     @provide
-    async def bot_session(self, settings: Settings) -> AsyncIterable[AiohttpSession]:
+    async def bot_session(
+        self, 
+        settings: Settings
+    ) -> AsyncIterable[AiohttpSession]:
+        
         proxy = (
             settings.PROXY_URL
             if settings.BOT_PROXY
@@ -117,8 +130,14 @@ class AppProvider(Provider):
         await self._clear(session)
 
 
+
     @provide
-    async def bot(self, session: AiohttpSession, settings: Settings) -> Bot:
+    async def bot(
+        self, 
+        session: AiohttpSession, 
+        settings: Settings
+    ) -> Bot:
+        
         return Bot(
             session=session,
             token=settings.BOT_TOKEN,
@@ -130,6 +149,7 @@ class AppProvider(Provider):
         )
 
 
+
     # --- База данных ---
     @provide
     async def db_engine(self) -> AsyncIterable[AsyncEngine]:
@@ -138,10 +158,13 @@ class AppProvider(Provider):
         await self._clear(engine)
 
 
+
     @provide(scope=Scope.REQUEST)
     async def db_session(self) -> AsyncIterable[AsyncSession]:
         async with session_factory() as session:
+            logger.debug("🗄 New session bd")
             yield session
+
 
 
     # --- Сервис очереди ---
@@ -150,6 +173,7 @@ class AppProvider(Provider):
         service = QueueService(QueueManager(workers=50))
         yield service
         await self._clear(service)
+
 
 
     # --- Настройки ---
