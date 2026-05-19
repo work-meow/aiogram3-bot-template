@@ -13,36 +13,39 @@ LOCALES_DIR = Path(__file__).parent.resolve() / "locales"
 
 
 class LocaleManager(BaseManager):
-    """Менеджер для работы с локалями."""
+    """Менеджер для работы 
+    с локалями."""
 
     async def startup(self, *args: Any, **kwargs: Any) -> None:
         """Срабатывает при запуске диспетчера."""
         logger.info("🌍 LocaleManager: запущен")
 
+
     async def shutdown(self, *args: Any, **kwargs: Any) -> None:
         """Срабатывает при остановке диспетчера."""
         logger.info("🌍 LocaleManager: остановлен")
 
+
     async def get_locale(self, **kwargs: Any) -> str:
-        user: User | None = kwargs.get("event_from_user")
-
-        # 1. TODO: Получение из БД
-
-        # 2. Системный язык Telegram
-        if user and user.language_code:
-            return user.language_code
-
-        # 3. Безопасный фоллбэк
+        """Определяет локаль пользователя полученного
+        из мидлвари БД или возвращает дефолтную."""
+        
+        db_user = kwargs.get("user")
+        if db_user and db_user.lang:
+            return db_user.lang
+        
         return self.default_locale or "ru"
 
+
     async def set_locale(self, locale: str, **kwargs: Any) -> None:
-        """TODO: Сохранение языка в БД."""
+        """Не используется пока-что."""
         pass
 
 
 
 def setup_i18n() -> I18nMiddleware:
     """Сборка движка локализации."""
+    
     locale_path = LOCALES_DIR / "{locale}"
 
     # 1. Собираем ядро

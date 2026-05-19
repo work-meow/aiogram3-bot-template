@@ -1,50 +1,97 @@
+from typing import Any
 from loguru import logger
 from dishka import AsyncContainer
 from aiogram import Bot, Dispatcher
-from dishka.integrations.aiogram import setup_dishka
+from aiogram.types import TelegramObject
+from collections.abc import Callable, Awaitable
 from aiogram.fsm.storage.memory import MemoryStorage
+from dishka.integrations.aiogram import (
+    ContainerMiddleware as DishkaMW,
+    setup_dishka
+)
 
-from app.bot.events import on_shutdown, on_startup, on_error
+from app.bot.events import on_error, on_shutdown, on_startup
 from app.bot.middlewares import setup_middlewares
 from app.bot.handlers import setup_routers
 
 
-async def init_bot(container: AsyncContainer) -> tuple[Bot, Dispatcher]:
-    """Инициализация Bot и Dispatcher."""
+type EventData = dict[str, Any]
+type Handler = Callable[
+    [
+        TelegramObject,
+        EventData
+    ],
+    Awaitable[Any]
+]
 
-    # 1. Получаем бота
+
+def _dishka_patch() -> None:
+    """Выполняется ЕДИНОЖДЫ. Подменяет 
+    логику мидлвари, чтобы на весь апдейт 
+    открывалась строго одна сессия 
+    БД (REQUEST-скоуп)."""
+
+    async def _upd_call(
+        self: DishkaMW,
+        handler: Handler,
+        event: TelegramObject,
+        data: EventData,
+        _orig=DishkaMW.__call__
+    ) -> Any:
+        """Вызывается ПОСТОЯННО на 
+        каждое событие от Telegram."""
+        
+        if "_dishka_handled" in data:
+            return await handler(event, data)
+            
+        data["_dishka_handled"] = True
+        return await _orig(self, handler, event, data)
+
+    DishkaMW.__call__ = _upd_call
+
+
+_dishka_patch()
+
+
+
+async def init_bot(
+    container: AsyncContainer
+) -> tuple[Bot, Dispatcher]:
+    """Сборка бота, диспетчера и 
+    настройка экосистемы."""
+    
+    #  Инициализация бота
     bot = await container.get(Bot)
-
-    # 2. Собираем диспетчер
     dp = Dispatcher(storage=MemoryStorage())
 
-    # 3. Прокидываем DI в контекст
+    # 2 Прокидываем APP-контейнер
     dp["dishka_container"] = container
+    setup_dishka(container, dp, auto_inject=True)
 
-    # 4. Регистрация событий
+    # 2. Регистрация жизненного цикла
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     dp.errors.register(on_error)
 
-    # 5. Подключаем мидллвари
-    setup_middlewares(dp)
+    # 3. Подключаем мидлвари
+    setup_middlewares(dp)                          
+    
+    # 4. Подключаем роутеры
+    dp.include_router(setup_routers())             
 
-    # 6. Регистрация роутеров
-    dp.include_router(setup_routers())
-
-    # 7. Связываем с DI-контейнером
-    setup_dishka(container, dp, auto_inject=True)
-
-    logger.info("🤖 Бот инициализирован")
+    logger.info("🤖 Bot is ready!")
     return bot, dp
 
 
 
 async def start_bot(bot: Bot, dp: Dispatcher) -> None:
-    """Старт поллинга бота."""
+    """Запуск поллинга бота."""
+    
+    # 1. Получаем пропущенные апдейты
+    await bot.delete_webhook(False)
 
-    # 1. Обрабатываем пропущенные апдейты
-    await bot.delete_webhook(drop_pending_updates=False)
-
-    # 2. Слушаем события, для которых есть хендлеры
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    # 2. Слушаем исключительно те события, 
+    # на которые зарегистрированы хендлеры
+    used_upd = dp.resolve_used_update_types()
+    await dp.start_polling(bot, allowed_updates=used_upd)
+    
