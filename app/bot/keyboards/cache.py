@@ -1,92 +1,87 @@
-from threading import Lock
 from functools import wraps
 from collections import OrderedDict
-from typing import Any, Concatenate, ParamSpec, TypeVar
-from inspect import Signature, iscoroutinefunction, signature
+from inspect import iscoroutinefunction
 from collections.abc import Callable, Hashable, Mapping
+from typing import Any, Concatenate, ParamSpec, TypeVar
 from aiogram.filters.callback_data import CallbackData
 from aiogram_i18n import I18nContext
+from loguru import logger
 
 
 P = ParamSpec("P")
 R = TypeVar("R")
 
-_PRIMITIVE_TYPES = (
-    str, int, float,
-    bool, bytes,
-    type(None),
+PRIMITIVES = (
+    str | int | float 
+    | bool | bytes | 
+    type(None)
 )
 
 
-def _freeze(value: Any) -> Hashable:
-    """
-    Преобразует параметр клавиатуры в hashable-ключ.
-    Поддерживаем типы, которые нормально использовать
-    в фабриках клавиатур: примитивы, CallbackData,
-    списки, кортежи и словари.
-    """
 
-    if isinstance(value, CallbackData):
-        return (type(value), value.pack())
 
-    if isinstance(value, _PRIMITIVE_TYPES):
-        return (type(value), value)
+def _freeze(val: Any) -> Hashable:
+    """Рекурсивная заморозка 
+    аргументов в hash-ключ."""
+    
+    # 1. Примитивы
+    if isinstance(val, PRIMITIVES):
+        return (val.__class__, val)
 
-    if isinstance(value, (tuple, list)):
-        return tuple(_freeze(item) for item in value)
+    # 2. CallbackData
+    if isinstance(val, CallbackData):
+        return (val.__class__, val.pack())
 
-    if isinstance(value, Mapping):
-        return tuple(
-            sorted(
-                (
-                    (_freeze(key), _freeze(item))
-                    for key, item in value.items()
-                ),
-                key=repr,
-            )
+    # 3. Коллекции (кортежи, списки)
+    if isinstance(val, tuple | list):
+        return tuple(map(_freeze, val))
+
+    # 4. Словари (через frozenset)
+    if isinstance(val, Mapping):
+        return frozenset(
+            (_freeze(k), _freeze(v))
+            for k, v in val.items()
         )
 
-    if isinstance(value, Hashable):
-        return (type(value), value)
+    # 5. Остальные объекты
+    if isinstance(val, Hashable):
+        return (val.__class__, val)
 
+    # 6. Некэшируемое
     raise TypeError(
-        "Cannot cache keyboard with non-hashable argument "
-        f"{type(value).__module__}.{type(value).__qualname__}. "
-        "Use primitive values, CallbackData, lists, tuples or dicts."
+        "Uncacheable arg: "
+        f"{val.__class__.__module__}."
+        f" {val.__class__.__qualname__}"
     )
+
+
 
 
 def _make_key(
-    sig: Signature,
     i18n: I18nContext,
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
-) -> Hashable:
-    """Собирает ключ кэша из локали
-    и нормализованных аргументов."""
-
-    locale = getattr(i18n, "locale", None)
-    if locale is None:
+) -> tuple[str, Hashable, Hashable]:
+    """Прямая сборка ключа."""
+    
+    if not (
+        locale := getattr(
+            i18n, "locale",
+            None
+        )
+    ):
         raise ValueError(
-            "I18nContext must contain a "
-            "valid 'locale' attribute."
+            "I18nContext missing "
+            "'locale' attribute."
         )
 
-    bound = sig.bind(
-        i18n, *args,
-        **kwargs
-    )
-
-    bound.apply_defaults()
-    args = tuple(bound.arguments.items())
-
     return (
-        str(locale), tuple(
-            (name, _freeze(value))
-            for name, value
-            in args[1:]
-        ),
+        locale,
+        _freeze(args),
+        _freeze(kwargs),
     )
+
+
 
 
 def cached_kb(
@@ -96,35 +91,25 @@ def cached_kb(
     [Callable[Concatenate[I18nContext, P], R]],
     Callable[Concatenate[I18nContext, P], R],
 ]:
-    """
-    LRU-кэш для синхронных фабрик клавиатур.
-
-    maxsize=None — для статичных клавиатур:
-    main_menu, back, close, cancel.
-
-    maxsize=N — для параметризованных клавиатур:
-    catalog_page, language_menu, filters.
-    """
-
+    """LRU-кэш синхронных фабрик клавиатур."""
+    
     if maxsize is not None and maxsize < 1:
-        raise ValueError(
-            "maxsize must be a positive "
-            "integer or None."
-        )
+        raise ValueError("maxsize >= 1 or None")
 
     def decorator(
-        func: Callable[Concatenate[I18nContext, P], R],
+        func: Callable[Concatenate[I18nContext, P], R]
     ) -> Callable[Concatenate[I18nContext, P], R]:
-
+        
         if iscoroutinefunction(func):
             raise TypeError(
-                "@cached_kb supports only sync "
-                "keyboard factories."
+                "Supports only "
+                "sync factories."
             )
 
-        lock = Lock()
+        # Кэш + лок. кэш методов для ускорения
         cache: OrderedDict[Hashable, R] = OrderedDict()
-        sig = signature(func)
+        _move_to_end = cache.move_to_end
+        _popitem = cache.popitem
 
         @wraps(func)
         def wrapper(
@@ -132,26 +117,30 @@ def cached_kb(
             *args: P.args,
             **kwargs: P.kwargs,
         ) -> R:
-
-            key = _make_key(
-                sig, i18n, args,
+            
+            # 1. Получаем ключ
+            k_key = _make_key(
+                i18n, args, 
                 kwargs
             )
 
-            with lock:
-                if key in cache:
-                    cache.move_to_end(key)
-                    return cache[key]
+            # 2. Берем из кэша 
+            if k_key in cache:
+                _move_to_end(k_key)
+                return cache[k_key]
 
-                result = func(
-                    i18n, *args,
-                    **kwargs
-                )
+            # 3. Вып. фабрику
+            result = func(
+                i18n, *args, 
+                **kwargs
+            )
+            
+            # 4. Контроль лимита
+            cache[k_key] = result
+            if maxsize and len(cache) > maxsize:
+                _popitem(last=False)
 
-                cache[key] = result
-                if maxsize is not None and len(cache) > maxsize:
-                    cache.popitem(last=False)
-                return result
+            return result
 
         return wrapper
 
