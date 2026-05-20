@@ -185,7 +185,8 @@ class AppProvider(Provider):
 
 
 async def init_container() -> AsyncContainer:
-    """Сборка DI-контейнера и прогрев критических сервисов."""
+    """Сборка DI-контейнера и 
+    прогрев сервисов."""
 
     logger.info("🛠 Сборка DI-контейнера...")
     container = make_async_container(AppProvider())

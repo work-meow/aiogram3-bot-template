@@ -13,7 +13,6 @@ from aiogram.types import (
 )
 
 
-
 type EventData = dict[str, Any]
 type Handler = Callable[
     [
@@ -22,7 +21,6 @@ type Handler = Callable[
     ],
     Awaitable[Any]
 ]
-
 
 
 class LoggingMiddleware(
