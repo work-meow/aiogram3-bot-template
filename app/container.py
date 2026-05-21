@@ -89,7 +89,7 @@ class AppProvider(Provider):
 
         else:
             logger.warning(
-                "Proxy не задан, ProxySession "
+                "Proxy не задан, сессия "
                 "работает напрямую!"
             )
 

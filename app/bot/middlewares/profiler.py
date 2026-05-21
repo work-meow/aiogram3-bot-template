@@ -77,7 +77,8 @@ class ProfilerMiddleware(
 
         if error is not None and self.log_errors:
             logger.opt(exception=error).error(
-                "UPDATE ERROR | update_id={} | type={} | elapsed={:.3f}s",
+                "UPDATE ERROR | update_id={} "
+                "| type={} | elapsed={:.3f}s",
                 update_id,
                 event_type,
                 elapsed,
@@ -86,7 +87,8 @@ class ProfilerMiddleware(
 
         if elapsed >= self.slow_after:
             logger.warning(
-                "SLOW UPDATE | update_id={} | type={} | elapsed={:.3f}s",
+                "SLOW UPDATE | update_id={} "
+                "| type={} | elapsed={:.3f}s",
                 update_id,
                 event_type,
                 elapsed,
@@ -95,7 +97,8 @@ class ProfilerMiddleware(
 
         if self.log_fast:
             logger.debug(
-                "UPDATE TIME | update_id={} | type={} | elapsed={:.3f}s",
+                "UPDATE TIME | update_id={} "
+                "| type={} | elapsed={:.3f}s",
                 update_id,
                 event_type,
                 elapsed,

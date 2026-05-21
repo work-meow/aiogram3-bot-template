@@ -1,5 +1,4 @@
 from typing import Any, Self
-
 from aiogram_i18n import I18nContext
 from aiogram.filters.callback_data import CallbackData
 from aiogram.utils.keyboard import (

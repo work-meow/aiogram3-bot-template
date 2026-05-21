@@ -6,13 +6,14 @@ from aiogram.types import TelegramObject
 from collections.abc import Callable, Awaitable
 from aiogram.fsm.storage.memory import MemoryStorage
 from dishka.integrations.aiogram import (
-    ContainerMiddleware as DishkaMW,
-    setup_dishka
+    ContainerMiddleware as DishkaMW, 
+    setup_dishka as setup_deps
 )
 
-from app.bot.events import on_error, on_shutdown, on_startup
 from app.bot.middlewares import setup_middlewares
 from app.bot.handlers import setup_routers
+from app.bot.events import setup_events
+
 
 
 type EventData = dict[str, Any]
@@ -23,6 +24,8 @@ type Handler = Callable[
     ],
     Awaitable[Any]
 ]
+
+
 
 
 def _dishka_patch() -> None:
@@ -54,6 +57,7 @@ _dishka_patch()
 
 
 
+
 async def init_bot(
     container: AsyncContainer
 ) -> tuple[Bot, Dispatcher]:
@@ -66,26 +70,29 @@ async def init_bot(
 
     # 2 Прокидываем APP-контейнер
     dp["dishka_container"] = container
-    setup_dishka(container, dp, auto_inject=True)
+    setup_deps(container, dp, auto_inject=True)
 
-    # 2. Регистрация жизненного цикла
-    dp.startup.register(on_startup)
-    dp.shutdown.register(on_shutdown)
-    dp.errors.register(on_error)
+    # 2. Эвенты
+    setup_events(dp)
 
-    # 3. Подключаем мидлвари
+    # 3. Мидлвари
     setup_middlewares(dp)                          
     
-    # 4. Подключаем роутеры
-    dp.include_router(setup_routers())             
-
+    # 4. Роутеры и обработчики
+    dp.include_router(setup_routers())    
+             
     logger.info("🤖 Bot is ready!")
     return bot, dp
 
 
 
-async def start_bot(bot: Bot, dp: Dispatcher) -> None:
-    """Запуск поллинга бота."""
+
+async def start_bot(
+    bot: Bot, 
+    dp: Dispatcher
+) -> None:
+    """Запуск бота
+    поллинга."""
     
     # 1. Получаем пропущенные апдейты
     await bot.delete_webhook(False)
