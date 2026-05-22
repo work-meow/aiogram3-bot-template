@@ -20,7 +20,7 @@ NEW = frozenset((
 
 
 
-async def on_chat_join(
+async def on_chat(
     event: ChatMemberUpdated,
     bot: FromDishka[Bot],
     settings: FromDishka[Settings]
