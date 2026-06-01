@@ -53,7 +53,7 @@ def mention(txt: Any, user_id: int | str) -> str:
     return f'<a href="tg://user?id={user_id}">{txt}</a>'
 
 def code(txt: Any) -> str:
-    """Моноширинный текст (копируется по клику)."""
+    """Моноширинный текст."""
     return f"<code>{txt}</code>"
 
 def pre(txt: Any) -> str:

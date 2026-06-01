@@ -1,21 +1,47 @@
 from aiogram import Dispatcher
 
 from .user import UserMiddleware
+from .action import ActionMiddleware
 from .antibot import AntiBotMiddleware
 from .logging  import LoggingMiddleware
 from .profiler  import ProfilerMiddleware
+from .mediagroup import MediaGroupMiddleware
+from .statistic import MetricsMiddleware
 from ..localization import setup_i18n
 
 
 def setup_middlewares(dp: Dispatcher) -> None:
-    """Регистрация всех middleware."""
+    """Регистрация всех middleware 
+    в строгом порядке."""
 
-    # 1. Антибот
+    # 1. Мгновенно отсекаем 
+    # доступ ботам (Zero I/O)
     dp.update.outer_middleware(
         AntiBotMiddleware()
     )
+    
+    # 2. Парсим тип действия 
+    # один раз для всех (Zero I/O)
+    dp.update.outer_middleware(
+        ActionMiddleware()
+    )
+    
+    # 3. Агрегируем альбомами 
+    # и глушим дубликаты (Zero I/O)
+    dp.update.outer_middleware(
+        MediaGroupMiddleware(
+            latency=0.5
+        )
+    )
+    
+    # 4. Собираем метрики 
+    # в Prometheus (Zero I/O)
+    dp.update.outer_middleware(
+        MetricsMiddleware()
+    )
 
-    # 2. Профилер обр. upd
+    # 5. Запускаем профилер 
+    # и гистограмму (Zero I/O)
     dp.update.outer_middleware(
         ProfilerMiddleware(
             slow_after=1.5,
@@ -24,19 +50,22 @@ def setup_middlewares(dp: Dispatcher) -> None:
         )
     )
 
-    # 3. Берем юзера из БД 
-    # на уровне ВСЕГО апдейта.
+    # 6. Берем юзера из БД 
+    # на уровне !ВСЕГО! апдейта.
     dp.update.outer_middleware(
         UserMiddleware()
     )
 
-    # 3. Локализация
+    # 7. Локализация 
+    # для пользователей
     setup_i18n().setup(dp)
 
-    # 4. Логирование upd
+    # 8. Логируем fsm
+    # вход/выход события 
     dp.update.middleware(
         LoggingMiddleware(
             log_state=True,
             p_limit=80,
         )
     )
+    

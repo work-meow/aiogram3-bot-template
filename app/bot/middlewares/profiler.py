@@ -1,10 +1,11 @@
 from typing import Any
+from loguru import logger
 from time import perf_counter
 from aiogram import BaseMiddleware
 from collections.abc import Awaitable, Callable
 from aiogram.types import TelegramObject, Update
-from loguru import logger
 
+from app.metrics import DURATION
 
 
 type EventData = dict[str, Any]
@@ -31,6 +32,7 @@ class ProfilerMiddleware(
     )
 
 
+
     def __init__(
         self,
         slow_after: float = 1.5,
@@ -53,56 +55,45 @@ class ProfilerMiddleware(
         self.log_fast = log_fast
 
 
-    @staticmethod
-    def _event_type(event: Update) -> str:
-        """Безопасно извлекает тип
-        события из апдейта."""
-        try:
-            return event.event_type
-        except LookupError:
-            return "unknown"
-
+                
 
     def _log(
         self,
-        event: Update,
+        action: str,
+        upd_id: int,
         elapsed: float,
         error: Exception | None,
     ) -> None:
         """Записывает информацию об
         обработке апдейта в логи."""
-
-        update_id = event.update_id
-        event_type = self._event_type(event)
+        
+        DURATION.labels(
+            service="bot", 
+            action_type=action
+        ).observe(elapsed)
 
         if error is not None and self.log_errors:
             logger.opt(exception=error).error(
-                "UPDATE ERROR | update_id={} "
-                "| type={} | elapsed={:.3f}s",
-                update_id,
-                event_type,
-                elapsed,
+                f"UPDATE ERROR | update_id={upd_id} | "
+                f"type={action} | elapsed={elapsed:.3f}s"
             )
             return
 
         if elapsed >= self.slow_after:
             logger.warning(
-                "SLOW UPDATE | update_id={} "
-                "| type={} | elapsed={:.3f}s",
-                update_id,
-                event_type,
-                elapsed,
+                f"SLOW UPDATE | update_id={upd_id} | "
+                f"type={action} | elapsed={elapsed:.3f}s"
             )
             return
 
         if self.log_fast:
             logger.debug(
-                "UPDATE TIME | update_id={} "
-                "| type={} | elapsed={:.3f}s",
-                update_id,
-                event_type,
-                elapsed,
+                f"UPDATE TIME | update_id={upd_id} | "
+                f"type={action} | elapsed={elapsed:.3f}s"
             )
+            return
+
+
 
 
     async def __call__(
@@ -111,25 +102,26 @@ class ProfilerMiddleware(
         event: TelegramObject,
         data: EventData,
     ) -> Any:
-        """Точка входа: перехватывает событие
-        и засекает время обработки."""
+        """Перехватывает событие и 
+        засекает время обработки."""
 
         if not isinstance(event, Update):
             return await handler(event, data)
 
-        started_at = perf_counter()
+        action = data.get("action_type", "unknown")
+        start_at = perf_counter()
         error = None
 
         try:
             return await handler(event, data)
-
         except Exception as exc:
             error = exc
             raise
 
         finally:
             self._log(
-                event=event,
-                elapsed=perf_counter() - started_at,
+                action=action,
+                upd_id=event.update_id,
+                elapsed=perf_counter() - start_at,
                 error=error
             )

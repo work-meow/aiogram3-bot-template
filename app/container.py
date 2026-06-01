@@ -162,7 +162,7 @@ class AppProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def db_session(self) -> AsyncIterable[AsyncSession]:
         async with session_factory() as session:
-            logger.debug("🗄 New session bd")
+            logger.debug("🗄 New session!")
             yield session
 
 

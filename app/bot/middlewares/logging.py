@@ -35,6 +35,7 @@ class LoggingMiddleware(
     )
 
 
+
     def __init__(
         self,
         log_state: bool = False,
@@ -56,6 +57,7 @@ class LoggingMiddleware(
 
 
 
+
     async def _state(self, data: EventData) -> str:
         """Безопасно извлекает текущее состояние
         пользователя (FSM) для лога."""
@@ -65,9 +67,10 @@ class LoggingMiddleware(
 
         if isinstance(state := data.get("state"), FSMContext):
             with contextlib.suppress(Exception):
-                if current_state := await state.get_state():
-                    return f" | state={current_state}"
+                if current := await state.get_state():
+                    return f" | state={current}"
         return ""
+
 
 
 
@@ -78,12 +81,13 @@ class LoggingMiddleware(
         if isinstance(event, CallbackQuery):
             data = event.data or "empty"
             return f" | data={data[:self.p_limit]}"
-
+        
         if isinstance(event, InlineQuery):
             query = event.query or "empty"
             return f" | query={query[:self.p_limit]}"
-
+        
         return ""
+
 
 
 
@@ -99,27 +103,17 @@ class LoggingMiddleware(
 
         if not isinstance(event, Update):
             return await handler(event, data)
-        upd_id = event.update_id
-
-        try:
-            ev_type = event.event_type
-            inner = event.event
-
-        except LookupError:
-            ev_type = "unknown"
-            inner = None
-
-
+        
+        inner = event.event
         user = getattr(inner, "from_user", None)
+        action = data.get("action_type", "unknown")
         u_id = user.id if user else "none"
-
-        payload = self._payload(inner)
-        state = await self._state(data)
-
+        
         logger.debug(
-            f"IN | update_id={upd_id} | "
-            f"type={ev_type} | user_id={u_id}"
-            f"{state} {payload}"
+            f"IN | update_id={event.update_id} | "
+            f"type={action} | user_id={u_id} |"
+            f"{await self._state(data)} |"
+            f"{self._payload(inner)}"
         )
 
         return await handler(event, data)

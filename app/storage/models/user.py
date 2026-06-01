@@ -67,6 +67,8 @@ class User(BaseModel):
             f"username={self.username})>"
         )
 
+
+
     @property
     def full_name(self) -> str:
         if self.last_name:

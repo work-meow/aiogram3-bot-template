@@ -2,10 +2,14 @@ from loguru import logger
 from itertools import batched
 from aiogram import Dispatcher
 from dishka import AsyncContainer
-from sqlalchemy.ext.asyncio import AsyncSession
-from dishka.integrations.aiogram import FromDishka, inject
-from aiogram.fsm.storage.memory import MemoryStorageRecord, MemoryStorage
 from aiogram.fsm.storage.base import StorageKey
+from dishka.integrations.aiogram import FromDishka, inject
+from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.fsm.storage.memory import (
+    MemoryStorageRecord,
+    MemoryStorage
+)
+
 
 from app.storage import StorageState
 
@@ -46,7 +50,7 @@ async def load_fsm(
     
     # 4. Заливаем данные 
     # во внутренний словарь
-    stg._data.update(states)
+    stg.storage.update(states)
     logger.debug(f"FSM Load: {len(states)}")
 
 
@@ -66,13 +70,13 @@ async def save_fsm(
     if not isinstance(stg, MemoryStorage):
         return
     
-    if not stg._data:
+    if not stg.storage:
         return
     
     # 2. Сортируем на 
     # сохранение и удаление
     to_del, to_upd = [], []
-    for key, rec in stg._data.items():
+    for key, rec in stg.storage.items():
         if rec.state is None and not rec.data:
             to_del.append((
                 key.bot_id, 
@@ -111,7 +115,7 @@ async def save_fsm(
         await db.commit()
     
     logger.debug(
-        "FSM Sync: "
+        "💾 FSM synced in bd: "
         f"{len(to_upd)} saved, "
         f"{len(to_del)} dropped"
     )

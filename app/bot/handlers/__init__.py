@@ -1,6 +1,6 @@
 from aiogram import Router
 
-from .common import common_router
+from .example import example_router
 
 
 def setup_routers() -> Router:
@@ -8,5 +8,5 @@ def setup_routers() -> Router:
     маршрутов."""
 
     main_router = Router(name="main")
-    main_router.include_routers(common_router)
+    main_router.include_routers(example_router)
     return main_router
