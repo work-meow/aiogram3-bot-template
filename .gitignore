@@ -170,3 +170,5 @@ cython_debug/
 temp/
 .amazonq
 deepagents-master/
+.continue
+.ruff_cache
