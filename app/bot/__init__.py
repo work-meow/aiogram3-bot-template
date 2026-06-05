@@ -10,6 +10,7 @@ from dishka.integrations.aiogram import (
     setup_dishka as setup_deps
 )
 
+from app.bot.webhook import get_tg_webhook, bot_lifespan
 from app.bot.middlewares import setup_middlewares
 from app.bot.handlers import setup_routers
 from app.bot.events import setup_events
@@ -24,7 +25,6 @@ type Handler = Callable[
     ],
     Awaitable[Any]
 ]
-
 
 
 
@@ -94,11 +94,15 @@ async def start_bot(
     """Запуск бота
     поллинга."""
     
-    # 1. Получаем пропущенные апдейты
+    # 1. Сохраняем 
+    # пропущенные апдейты
     await bot.delete_webhook(False)
 
     # 2. Слушаем исключительно те события, 
     # на которые зарегистрированы хендлеры
     used_upd = dp.resolve_used_update_types()
-    await dp.start_polling(bot, allowed_updates=used_upd)
+    await dp.start_polling(bot,
+        allowed_updates=used_upd,
+        handle_signals=False
+    )
     

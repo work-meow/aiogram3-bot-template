@@ -16,8 +16,8 @@ from app.storage.enums import *
 # 1. Инициализируем пул подключений
 engine: Final = create_async_engine(
     url=get_settings().DATABASE_URL,
-    pool_size=20,
-    max_overflow=10,
+    pool_size=50,
+    max_overflow=20,
     pool_pre_ping=True,
     pool_recycle=1800,
     echo=False,
