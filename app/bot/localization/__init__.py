@@ -79,6 +79,7 @@ def setup_i18n() -> I18nMiddleware:
             "QUOTE": f.quote,
             "SPOIL": f.spoiler,
             "MENTION": f.mention,
+            "EMOJI": f.emoji,
         }
     )
 

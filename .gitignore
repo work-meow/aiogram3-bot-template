@@ -172,3 +172,5 @@ temp/
 deepagents-master/
 .continue
 .ruff_cache
+opencode.json
+.serena/**

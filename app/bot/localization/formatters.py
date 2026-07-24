@@ -83,3 +83,8 @@ def spoiler(txt: Any) -> str:
 def quote(txt: Any) -> str:
     """Блочная цитата."""
     return f"<blockquote>{txt}</blockquote>"
+
+def emoji(emoji_id: str | int, fallback: Any) -> str:
+    """Премиум кастомный эмодзи. fallback — обычный юникод-эмодзи,
+    который увидят юзеры без Premium и клиенты без поддержки."""
+    return f'<tg-emoji emoji-id="{emoji_id}">{fallback}</tg-emoji>'

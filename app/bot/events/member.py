@@ -45,9 +45,9 @@ async def on_chat(
             chat_id=settings.LOG_CHAT,
             text=(
                 f"<b>Новый чат!</b>\n\n"
-                f"<b>Название:</b> {name}\n"
-                f"<b>Тип:</b> {c.type}\n"
-                f"<b>ID:</b> {c.id}\n"
+                f"<b>Название:</b> {title}\n"
+                f"<b>Тип:</b> {chat.type}\n"
+                f"<b>ID:</b> {chat.id}\n"
             )
         )
         
