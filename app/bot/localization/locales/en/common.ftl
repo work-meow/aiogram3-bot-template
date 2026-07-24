@@ -15,3 +15,4 @@ rich-details-body = Response p99: 42ms, RPS: 1300, error rate: 0%.
 rich-footer = Updated automatically every minute.
 rich-list-1 = All health checks passed
 rich-list-2 = No incidents in the last 24 hours
+topic-hello = Hi! This is thread #{ $id } 🧵

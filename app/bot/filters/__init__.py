@@ -1,6 +1,7 @@
 from .env import EnvFilter
 from .channel import IsSubscribed
 from .chat_type import ChatTypeFilter
+from .thread import ThreadFilter
 from .album import AlbumContains
 
 
@@ -9,4 +10,5 @@ __all__ = [
     "IsSubscribed",
     "AlbumContains",
     "ChatTypeFilter",
+    "ThreadFilter",
 ]
