@@ -1,12 +1,13 @@
 from typing import Any
 from pathlib import Path
 from loguru import logger
-from aiogram.types import User
 from aiogram_i18n import I18nMiddleware
 from aiogram_i18n.managers import BaseManager
 from aiogram_i18n.cores import FluentCompileCore
 
+from .rich import answer_rich as answer_rich
 from . import formatters as f
+
 
 
 LOCALES_DIR = Path(__file__).parent.resolve() / "locales"
