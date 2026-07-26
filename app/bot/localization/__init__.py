@@ -11,6 +11,13 @@ from . import formatters as f
 
 
 LOCALES_DIR = Path(__file__).parent.resolve() / "locales"
+SUPPORTED = frozenset(
+    p.name for p 
+    in LOCALES_DIR.iterdir() 
+    if p.is_dir()
+)
+
+
 
 
 class LocaleManager(BaseManager):
@@ -22,9 +29,11 @@ class LocaleManager(BaseManager):
         logger.info("🌍 LocaleManager: запущен")
 
 
+
     async def shutdown(self, *args: Any, **kwargs: Any) -> None:
         """Срабатывает при остановке диспетчера."""
         logger.info("🌍 LocaleManager: остановлен")
+
 
 
     async def get_locale(self, **kwargs: Any) -> str:
@@ -32,15 +41,19 @@ class LocaleManager(BaseManager):
         из мидлвари БД или возвращает дефолтную."""
         
         db_user = kwargs.get("user")
-        if db_user and db_user.lang:
-            return db_user.lang
+        raw = (getattr(db_user, "lang", None) or "").lower()
         
+        base = raw.split("-", 1)[0]
+        if base in SUPPORTED:
+            return base
+
         return self.default_locale or "ru"
 
 
     async def set_locale(self, locale: str, **kwargs: Any) -> None:
-        """Не используется пока-что."""
+        """Не используется."""
         pass
+
 
 
 

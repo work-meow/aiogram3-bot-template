@@ -61,9 +61,11 @@ def setup_middlewares(dp: Dispatcher) -> None:
     setup_i18n().setup(dp)
 
     # 8. Логируем fsm
-    # вход/выход события 
+    # вход/выход события
+    # (enabled=True для отладки)
     dp.update.middleware(
         LoggingMiddleware(
+            enabled=False,
             log_state=True,
             p_limit=80,
         )

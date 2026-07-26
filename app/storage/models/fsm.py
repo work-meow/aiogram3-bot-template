@@ -1,6 +1,6 @@
 from typing import Sequence, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import BigInteger, String, UniqueConstraint
+from sqlalchemy import BigInteger, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy import select, delete, tuple_, text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -20,19 +20,16 @@ class StorageState(BaseModel):
 
     bot_id: Mapped[int] = mapped_column(
         BigInteger, 
-        index=True, 
         comment="ID бота"
     )
     
     chat_id: Mapped[int] = mapped_column(
         BigInteger, 
-        index=True, 
         comment="ID чата"
     )
     
     user_id: Mapped[int] = mapped_column(
         BigInteger, 
-        index=True, 
         comment="ID юзера"
     )
     
@@ -55,9 +52,13 @@ class StorageState(BaseModel):
 
     __table_args__ = (
         UniqueConstraint(
-            "bot_id", "chat_id", 
+            "bot_id", "chat_id",
             "user_id", "destiny",
             name="uq_fsm_composite_key"
+        ),
+        Index(
+            "ix_fsm_states_updated_at",
+            "updated_at"
         ),
     )
 
@@ -72,20 +73,28 @@ class StorageState(BaseModel):
     @classmethod
     async def get_active(
         cls,
-        session: AsyncSession
-    ) -> Sequence["StorageState"]:
-        """Получает только свежие 
+        session: AsyncSession,
+        limit: int = 200_000
+    ) -> Sequence[Any]:
+        """Получает только свежие
         состояния за 30 дней."""
-        
-        return (
-            await session.scalars(
-                select(cls).where(
-                    cls.updated_at >= 
-                    func.now() 
-                    - TTL
-                )
+
+        stmt = (
+            select(
+                cls.bot_id,
+                cls.chat_id,
+                cls.user_id,
+                cls.destiny,
+                cls.state,
+                cls.data
             )
-        ).all()
+            .where(
+                cls.updated_at >= 
+                func.now() - TTL
+            )
+            .limit(limit)
+        )
+        return (await session.execute(stmt)).all()
 
 
 
@@ -104,12 +113,15 @@ class StorageState(BaseModel):
         await session.execute(
             delete(cls).where(
                 tuple_(
-                    cls.bot_id, 
+                    cls.bot_id,
                     cls.chat_id,
-                    cls.user_id, 
+                    cls.user_id,
                     cls.destiny
                 ).in_(keys)
-            )
+            ),
+            execution_options={
+                "synchronize_session": False
+            }
         )
 
 
@@ -155,8 +167,11 @@ class StorageState(BaseModel):
         
         await session.execute(
             delete(cls).where(
-                cls.updated_at < 
-                func.now() 
+                cls.updated_at <
+                func.now()
                 - TTL
-            )
+            ),
+            execution_options={
+                "synchronize_session": False
+            }
         )

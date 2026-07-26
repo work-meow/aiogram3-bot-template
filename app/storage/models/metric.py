@@ -19,13 +19,11 @@ class Metric(BaseModel):
 
     service: Mapped[str] = mapped_column(
         String(50), 
-        index=True,
         comment="Источник"
     )
 
     name: Mapped[str] = mapped_column(
         String(255), 
-        index=True,
         comment="Название"
     )
 

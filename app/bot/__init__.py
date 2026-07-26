@@ -98,11 +98,12 @@ async def start_bot(
     # пропущенные апдейты
     await bot.delete_webhook(False)
 
-    # 2. Слушаем исключительно те события, 
+    # 2. Слушаем исключительно те события,
     # на которые зарегистрированы хендлеры
     used_upd = dp.resolve_used_update_types()
     await dp.start_polling(bot,
         allowed_updates=used_upd,
-        handle_signals=False
+        handle_signals=False,
+        polling_timeout=50
     )
     

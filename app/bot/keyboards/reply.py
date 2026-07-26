@@ -8,7 +8,7 @@ from .cache import cached_kb
 
 
 
-@cached_kb(maxsize=None)
+@cached_kb(maxsize=32)
 def main_menu(
     i18n: I18nContext,
 ) -> ReplyKeyboardMarkup:

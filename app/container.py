@@ -3,12 +3,13 @@ import aiohttp
 
 from aiogram import Bot
 from loguru import logger
+from inspect import isawaitable
 from typing import Any, NewType
 from aiogram.enums import ParseMode
 from aiohttp_socks import ProxyConnector
-from collections.abc import AsyncIterable
 from dishka import make_async_container, provide
 from dishka import AsyncContainer, Provider, Scope
+from collections.abc import AsyncIterable, Callable
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
@@ -21,7 +22,7 @@ from app.settings import get_settings, Settings
 
 # --- Хелперы ---
 def orjson_dumps(obj: Any) -> str:
-    """Обертка для быстрой сериализации JSON."""
+    """Обертка для сериализации JSON."""
     return orjson.dumps(obj).decode()
 
 
@@ -35,14 +36,18 @@ ProxySession = NewType("ProxySession", aiohttp.ClientSession)
 class AppProvider(Provider):
     scope = Scope.APP
 
-    async def _clear(self, instance: Any) -> None:
-        """Универсальное завершение работы."""
+    async def _clear(self, closer: Callable[[], Any]) -> None:
+        """Завершение работы. Метод передаёт 
+        вызывающий close/stop/dispose."""
 
-        for method in ("close", "stop", "dispose"):
-            if closer := getattr(instance, method, None):
-                logger.debug(f"♻️ Shutdown: {instance.__class__.__name__}")
-                await closer()
-                break
+        name = type(getattr(closer, "__self__", closer)).__name__
+        logger.debug(f"♻️ Shutdown: {name}")
+        try:
+            if isawaitable(result := closer()):
+                await result
+
+        except Exception as e:
+            logger.warning(f"⚠️ При закрытии {name}: {e}")
 
 
     # --- Клиенты HTTP ---
@@ -64,7 +69,7 @@ class AppProvider(Provider):
         )
 
         yield DirectSession(session)
-        await self._clear(session)
+        await self._clear(session.close)
 
 
 
@@ -103,7 +108,7 @@ class AppProvider(Provider):
         )
 
         yield ProxySession(session)
-        await self._clear(session)
+        await self._clear(session.close)
 
 
 
@@ -127,7 +132,7 @@ class AppProvider(Provider):
         )
 
         yield session
-        await self._clear(session)
+        await self._clear(session.close)
 
 
 
@@ -155,7 +160,7 @@ class AppProvider(Provider):
     async def db_engine(self) -> AsyncIterable[AsyncEngine]:
         await ping_database()
         yield engine
-        await self._clear(engine)
+        await self._clear(engine.dispose)
 
 
 
@@ -172,7 +177,7 @@ class AppProvider(Provider):
     async def queue(self) -> AsyncIterable[QueueService]:
         service = QueueService(QueueManager(workers=50))
         yield service
-        await self._clear(service)
+        await self._clear(service.stop)
 
 
 

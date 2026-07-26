@@ -57,6 +57,23 @@ def _freeze(val: Any) -> Hashable:
 
 
 
+def _detach[T](val: T) -> T:
+    """Отдаёт копию структуры 
+    разметки.."""
+
+    for field in ("inline_keyboard", "keyboard"):
+        if (rows := getattr(val, field, None)) is None:
+            continue
+
+        copy = val.model_copy()
+        setattr(copy, field, [list(row) for row in rows])
+        return copy
+
+    return val
+
+
+
+
 def _make_key(
     i18n: I18nContext,
     args: tuple[Any, ...],
@@ -86,15 +103,18 @@ def _make_key(
 
 def cached_kb(
     *,
-    maxsize: int | None = 256,
+    maxsize: int = 256,
 ) -> Callable[
     [Callable[Concatenate[I18nContext, P], R]],
     Callable[Concatenate[I18nContext, P], R],
 ]:
-    """LRU-кэш синхронных фабрик клавиатур."""
-    
-    if maxsize is not None and maxsize < 1:
-        raise ValueError("maxsize >= 1 or None")
+    """LRU-кэш синхронных фабрик клавиатур.
+    maxsize обязателен: без предела фабрика
+    с аргументами копила бы запись на каждое
+    их значение — это прямая утечка."""
+
+    if not isinstance(maxsize, int) or maxsize < 1:
+        raise ValueError("maxsize must be int >= 1")
 
     def decorator(
         func: Callable[Concatenate[I18nContext, P], R]
@@ -124,23 +144,26 @@ def cached_kb(
                 kwargs
             )
 
-            # 2. Берем из кэша 
+            # 2. Берем из кэша
             if k_key in cache:
                 _move_to_end(k_key)
-                return cache[k_key]
+                return _detach(cache[k_key])
 
             # 3. Вып. фабрику
             result = func(
-                i18n, *args, 
+                i18n, *args,
                 **kwargs
             )
-            
+
             # 4. Контроль лимита
             cache[k_key] = result
-            if maxsize and len(cache) > maxsize:
+            if len(cache) > maxsize:
                 _popitem(last=False)
 
-            return result
+            # Копию отдаём и на промахе: иначе
+            # первый вызывающий получит сам
+            # закэшированный объект
+            return _detach(result)
 
         return wrapper
 

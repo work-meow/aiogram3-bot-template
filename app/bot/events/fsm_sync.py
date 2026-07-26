@@ -10,7 +10,6 @@ from aiogram.fsm.storage.memory import (
     MemoryStorage
 )
 
-
 from app.storage import StorageState
 
 
@@ -103,9 +102,9 @@ async def save_fsm(
             await StorageState.bulk_delete(
                 db, list(chunk)
             )
-            
+
         # 5. Сохраняем активные
-        for chunk in batched(to_upd, 5000):
+        for chunk in batched(to_upd, 2000):
             await StorageState.bulk_upsert(
                 db, list(chunk)
             )

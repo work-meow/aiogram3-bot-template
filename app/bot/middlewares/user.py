@@ -45,11 +45,10 @@ class UserMiddleware(BaseMiddleware):
             )
 
         session = await container.get(AsyncSession)
-        user = await User.get_by_tg_id(session, tg_user.id)
-
-        if user is None:
-            user = await User.create_new(session, tg_user)
+        user, created = await User.get_or_create(session, tg_user)
+        if created:
             logger.info(f"👋 New user: tg_id={tg_user.id}")
-
+        await session.commit()
+        
         data["user"] = user
         return await handler(event, data)

@@ -17,7 +17,8 @@ def trace_sql(engine: Engine) -> None:
 
 
     @event.listens_for(engine, "after_cursor_execute")
-    def after_exec(_c, _cr, q, p, ctx, _m) -> None:
+    def after_exec(_c, _cr, q, _p, ctx, _m) -> None:
         duration = perf_counter() - ctx._start
+
         if duration >= SLOW_DB_SEC:
-            logger.warning(f"🐌 {duration:.3f}с | {q} | params: {p}")
+            logger.warning(f"🐌 {duration:.3f}с | {q}")

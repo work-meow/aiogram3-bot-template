@@ -1,5 +1,7 @@
-from typing import Final
+import orjson
+
 from loguru import logger
+from typing import Any, Final
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
@@ -7,10 +9,16 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession
 )
 
-from app.settings import get_settings
 from app.storage.events import trace_sql
+from app.settings import get_settings
 from app.storage.models import *
 from app.storage.enums import *
+
+
+
+def _json_dumps(obj: Any) -> str:
+    """orjson вместо stdlib json."""
+    return orjson.dumps(obj).decode()
 
 
 # 1. Инициализируем пул подключений
@@ -18,8 +26,10 @@ engine: Final = create_async_engine(
     url=get_settings().DATABASE_URL,
     pool_size=50,
     max_overflow=20,
-    pool_pre_ping=True,
     pool_recycle=1800,
+    pool_pre_ping=True,
+    json_serializer=_json_dumps,
+    json_deserializer=orjson.loads,
     echo=False,
 )
 

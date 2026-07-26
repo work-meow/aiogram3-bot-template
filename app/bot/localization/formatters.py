@@ -1,5 +1,27 @@
 from typing import Any
+from html import escape
 from datetime import datetime
+
+
+
+class Safe(str):
+    """Готовая разметка
+    повторно не эскейпится."""
+
+
+def _esc(val: Any) -> str:
+    """Эскейпит текст юзера, но
+    не разметку, собранную 
+    функциями ниже ."""
+
+    if isinstance(val, Safe):
+        return val
+    return escape(str(val), quote=False)
+
+
+def _attr(val: Any) -> str:
+    """Значение внутрь HTML-атрибута."""
+    return escape(str(val), quote=True)
 
 
 # ----- Финансы и числа -----
@@ -44,47 +66,47 @@ def phone(num: str | int) -> str:
 
 
 # ----- HTML разметка -----
-def link(url: str, txt: Any) -> str:
+def link(url: str, txt: Any) -> Safe:
     """Обычная гиперссылка."""
-    return f'<a href="{url}">{txt}</a>'
+    return Safe(f'<a href="{_attr(url)}">{_esc(txt)}</a>')
 
-def mention(txt: Any, user_id: int | str) -> str:
+def mention(txt: Any, user_id: int | str) -> Safe:
     """Кликабельное упоминание юзера без @username."""
-    return f'<a href="tg://user?id={user_id}">{txt}</a>'
+    return Safe(f'<a href="tg://user?id={_attr(user_id)}">{_esc(txt)}</a>')
 
-def code(txt: Any) -> str:
+def code(txt: Any) -> Safe:
     """Моноширинный текст."""
-    return f"<code>{txt}</code>"
+    return Safe(f"<code>{_esc(txt)}</code>")
 
-def pre(txt: Any) -> str:
+def pre(txt: Any) -> Safe:
     """Блок кода."""
-    return f"<pre>{txt}</pre>"
+    return Safe(f"<pre>{_esc(txt)}</pre>")
 
-def bold(txt: Any) -> str:
+def bold(txt: Any) -> Safe:
     """Жирный текст."""
-    return f"<b>{txt}</b>"
+    return Safe(f"<b>{_esc(txt)}</b>")
 
-def italic(txt: Any) -> str:
+def italic(txt: Any) -> Safe:
     """Курсив."""
-    return f"<i>{txt}</i>"
+    return Safe(f"<i>{_esc(txt)}</i>")
 
-def underline(txt: Any) -> str:
+def underline(txt: Any) -> Safe:
     """Подчеркнутый текст."""
-    return f"<u>{txt}</u>"
+    return Safe(f"<u>{_esc(txt)}</u>")
 
-def strike(txt: Any) -> str:
+def strike(txt: Any) -> Safe:
     """Зачеркнутый текст."""
-    return f"<s>{txt}</s>"
+    return Safe(f"<s>{_esc(txt)}</s>")
 
-def spoiler(txt: Any) -> str:
+def spoiler(txt: Any) -> Safe:
     """Скрытый текст."""
-    return f"<tg-spoiler>{txt}</tg-spoiler>"
+    return Safe(f"<tg-spoiler>{_esc(txt)}</tg-spoiler>")
 
-def quote(txt: Any) -> str:
+def quote(txt: Any) -> Safe:
     """Блочная цитата."""
-    return f"<blockquote>{txt}</blockquote>"
+    return Safe(f"<blockquote>{_esc(txt)}</blockquote>")
 
-def emoji(emoji_id: str | int, fallback: Any) -> str:
+def emoji(emoji_id: str | int, fallback: Any) -> Safe:
     """Премиум кастомный эмодзи. fallback — обычный юникод-эмодзи,
     который увидят юзеры без Premium и клиенты без поддержки."""
-    return f'<tg-emoji emoji-id="{emoji_id}">{fallback}</tg-emoji>'
+    return Safe(f'<tg-emoji emoji-id="{_attr(emoji_id)}">{_esc(fallback)}</tg-emoji>')

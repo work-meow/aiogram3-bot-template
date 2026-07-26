@@ -1,7 +1,7 @@
 import uuid6
 
 from datetime import datetime
-from sqlalchemy import func, MetaData
+from sqlalchemy import DateTime, func, MetaData
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -27,12 +27,14 @@ class BaseModel(DeclarativeBase):
     )
 
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         server_default=func.now(),
         sort_order=999,
         comment="Дата создания записи"
     )
 
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
         sort_order=1000,

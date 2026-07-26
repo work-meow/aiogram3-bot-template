@@ -32,12 +32,14 @@ class LoggingMiddleware(
     __slots__ = (
         "log_state",
         "p_limit",
+        "enabled",
     )
 
 
 
     def __init__(
         self,
+        enabled: bool = False,
         log_state: bool = False,
         p_limit: int = 80,
     ) -> None:
@@ -52,6 +54,7 @@ class LoggingMiddleware(
                 "greater than 0"
             )
 
+        self.enabled = enabled
         self.log_state = log_state
         self.p_limit = p_limit
 
@@ -101,9 +104,9 @@ class LoggingMiddleware(
         подробного лога на входе и выходе.
         """
 
-        if not isinstance(event, Update):
+        if not self.enabled or not isinstance(event, Update):
             return await handler(event, data)
-        
+
         inner = event.event
         user = getattr(inner, "from_user", None)
         action = data.get("action_type", "unknown")
