@@ -1,4 +1,4 @@
-from typing import Any, Self
+from typing import Any, Literal, Self
 from aiogram_i18n import I18nContext
 from aiogram.filters.callback_data import CallbackData
 from aiogram.utils.keyboard import (
@@ -16,40 +16,57 @@ from aiogram.types import (
 
 
 
+# Цвет кнопки (Bot API 9.4):
+# синяя / зелёная / красная.
+ButtonStyle = Literal[
+    "primary", 
+    "success", 
+    "danger"
+]
+
+
+
+
 class I18nInline(InlineKeyboardBuilder):
-    """Инлайн-клавиатуры с автопереводом 
+    """Инлайн-клавиатуры с автопереводом
     (Fluent Builder)."""
 
     def __init__(self, i18n: I18nContext) -> None:
         super().__init__()
         self.i18n = i18n
 
-    def url(self, key: str, url: str, **kwargs: Any) -> Self:
-        self.button(text=self.i18n.get(key, **kwargs), url=url)
+    def pay(self, key: str, style: ButtonStyle | None = None, **kwargs: Any) -> Self:
+        self.button(text=self.i18n.get(key, **kwargs), pay=True, style=style)
         return self
 
-    def pay(self, key: str, **kwargs: Any) -> Self:
-        self.button(text=self.i18n.get(key, **kwargs), pay=True)
+    def url(self, key: str, url: str, style: ButtonStyle | None = None, **kwargs: Any) -> Self:
+        self.button(text=self.i18n.get(key, **kwargs), url=url, style=style)
         return self
 
-    def btn(self, key: str, cd: str | CallbackData, **kwargs: Any) -> Self:
-        self.button(text=self.i18n.get(key, **kwargs), callback_data=cd)
+    def login(self, key: str, url: str, style: ButtonStyle | None = None, **kwargs: Any) -> Self:
+        self.button(text=self.i18n.get(key, **kwargs), login_url=LoginUrl(url=url), style=style)
         return self
 
-    def web_app(self, key: str, url: str, **kwargs: Any) -> Self:
-        self.button(text=self.i18n.get(key, **kwargs), web_app=WebAppInfo(url=url))
+    def web_app(self, key: str, url: str, style: ButtonStyle | None = None, **kwargs: Any) -> Self:
+        self.button(text=self.i18n.get(key, **kwargs), web_app=WebAppInfo(url=url), style=style)
         return self
 
-    def login(self, key: str, url: str, **kwargs: Any) -> Self:
-        self.button(text=self.i18n.get(key, **kwargs), login_url=LoginUrl(url=url))
+    def login(self, key: str, url: str, style: ButtonStyle | None = None, **kwargs: Any) -> Self:
+        self.button(text=self.i18n.get(key, **kwargs), login_url=LoginUrl(url=url), style=style)
         return self
 
-    def copy(self, key: str, copy_text: str, **kwargs: Any) -> Self:
-        self.button(text=self.i18n.get(key, **kwargs), copy_text=CopyTextButton(text=copy_text))
+    def copy(self, key: str, copy_text: str, style: ButtonStyle | None = None, **kwargs: Any) -> Self:
+        self.button(text=self.i18n.get(key, **kwargs), copy_text=CopyTextButton(text=copy_text), style=style)
+        return self
+    
+    def btn(self, key: str, cd: str | CallbackData, style: ButtonStyle | None = None, **kwargs: Any,) -> Self:
+        self.button(text=self.i18n.get(key, **kwargs), callback_data=cd, style=style)
         return self
 
     def as_markup(self, **kwargs: Any) -> InlineKeyboardMarkup:
         return super().as_markup(**kwargs)
+
+
 
 
 

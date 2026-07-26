@@ -43,7 +43,7 @@ def close(
 
     return (
         I18nInline(i18n)
-        .btn("btn-close", cb)
+        .btn("btn-close", cb, style="danger")
         .adjust(1)
         .as_markup()
     )
@@ -62,7 +62,7 @@ def cancel(
 
     return (
         I18nInline(i18n)
-        .btn("btn-cancel", cb)
+        .btn("btn-cancel", cb, style="danger")
         .adjust(1)
         .as_markup()
     )
